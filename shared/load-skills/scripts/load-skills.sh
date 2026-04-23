@@ -25,7 +25,15 @@ get_description() {
         /^---/         { fm++; next }
         fm==1 && /^description:/ {
             sub(/^description:[[:space:]]*/, "")
-            # Truncate at first sentence or 80 chars for list display
+            # YAML block scalar (|, |-,  >) — read next non-empty line
+            if ($0 ~ /^[|>]-?[[:space:]]*$/) { block=1; next }
+            if (length($0) > 80) $0 = substr($0, 1, 77) "..."
+            print; exit
+        }
+        fm==1 && block {
+            # Skip leading whitespace from indented block
+            sub(/^[[:space:]]+/, "")
+            if ($0 == "") next
             if (length($0) > 80) $0 = substr($0, 1, 77) "..."
             print; exit
         }
