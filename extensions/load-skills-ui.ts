@@ -2,7 +2,7 @@
  * load-skills-ui.ts
  *
  * Pi extension: /load-skills command with interactive TUI picker.
- * Manages both skills and extensions from ~/pi-skills_vault.
+ * Manages both skills and extensions from the configured pi-skills vault.
  *
  * Usage:
  *   /load-skills                             → open TUI picker
@@ -33,8 +33,15 @@ import {
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
-const VAULT = process.env.PI_SKILLS_VAULT || join(homedir(), "pi-skills_vault");
-const SCRIPT = join(VAULT, "shared/load-skills/scripts/load-skills.sh");
+const DEFAULT_VAULT = join(homedir(), "pi-skills_vault");
+
+function getVault(): string {
+  return process.env.PI_SKILLS_VAULT || DEFAULT_VAULT;
+}
+
+function getScriptPath(vault: string): string {
+  return join(vault, "shared/load-skills/scripts/load-skills.sh");
+}
 
 // ── Data types ────────────────────────────────────────────────────────────────
 
@@ -81,11 +88,12 @@ function parseExtDescription(content: string): string {
 
 function loadVault(): VaultEntry[] {
   const entries: VaultEntry[] = [];
-  if (!existsSync(VAULT)) return entries;
+  const vault = getVault();
+  if (!existsSync(vault)) return entries;
 
   let categories: string[];
   try {
-    categories = readdirSync(VAULT, { withFileTypes: true })
+    categories = readdirSync(vault, { withFileTypes: true })
       .filter((d) => d.isDirectory() && !d.name.startsWith("."))
       .map((d) => d.name)
       .sort((a, b) => {
@@ -98,7 +106,7 @@ function loadVault(): VaultEntry[] {
   }
 
   for (const cat of categories) {
-    const catDir = join(VAULT, cat);
+    const catDir = join(vault, cat);
 
     if (cat === "extensions") {
       let files: string[];
@@ -203,7 +211,7 @@ class VaultPicker {
     const inner = Math.max(10, width - 2);
     const current = this.current;
 
-    lines.push(truncateToWidth(`  ${t.fg("accent", t.bold("📦 pi-skills_vault"))}  ${t.fg("dim", VAULT)}`, width));
+    lines.push(truncateToWidth(`  ${t.fg("accent", t.bold("📦 pi-skills_vault"))}  ${t.fg("dim", getVault())}`, width));
     lines.push("");
 
     // ── List grouped by category ───────────────────────────────
@@ -346,24 +354,30 @@ async function pickScope(entry: VaultEntry, ctx: any): Promise<string | null> {
 
 export default function (pi: ExtensionAPI) {
   pi.registerCommand("load-skills", {
-    description: "Browse and install skills & extensions from ~/pi-skills_vault (opens interactive picker)",
+    description: "Browse and install skills & extensions from the configured pi-skills vault (opens interactive picker)",
     handler: async (args, ctx) => {
       const argv = (args || "").trim().split(/\s+/).filter(Boolean);
 
       // ── Direct pass-through commands (no TUI) ────────────
       if (argv[0] === "list") {
-        const r = spawnSync("bash", [SCRIPT, "list"], { encoding: "utf8" });
+        const vault = getVault();
+        const script = getScriptPath(vault);
+        const r = spawnSync("bash", [script, "--vault", vault, "list"], { encoding: "utf8" });
         ctx.ui.notify(r.stdout || r.stderr || "(empty)", "info");
         return;
       }
       if (argv[0] === "preview" && argv[1]) {
-        const r = spawnSync("bash", [SCRIPT, "preview", argv[1]], { encoding: "utf8" });
+        const vault = getVault();
+        const script = getScriptPath(vault);
+        const r = spawnSync("bash", [script, "--vault", vault, "preview", argv[1]], { encoding: "utf8" });
         ctx.ui.notify(r.stdout || r.stderr, "info");
         return;
       }
       if ((argv[0] === "--link" || argv[0] === "--copy") && argv[1]) {
         const extras = argv.slice(2);
-        const r = spawnSync("bash", [SCRIPT, "install", argv[0], argv[1], ...extras], { encoding: "utf8" });
+        const vault = getVault();
+        const script = getScriptPath(vault);
+        const r = spawnSync("bash", [script, "--vault", vault, "install", argv[0], argv[1], ...extras], { encoding: "utf8" });
         ctx.ui.notify((r.stdout + r.stderr).trim() || "done", r.status === 0 ? "success" : "error");
         return;
       }
@@ -371,7 +385,7 @@ export default function (pi: ExtensionAPI) {
       // ── TUI picker ────────────────────────────────────────
       const entries = loadVault();
       if (entries.length === 0) {
-        ctx.ui.notify(`Nothing found in vault: ${VAULT}`, "warning");
+        ctx.ui.notify(`Nothing found in vault: ${getVault()}`, "warning");
         return;
       }
 
@@ -400,7 +414,9 @@ export default function (pi: ExtensionAPI) {
       if (!scope) return;
 
       // Execute
-      const r = spawnSync("bash", [SCRIPT, "install", mode, selected.path, scope], { encoding: "utf8" });
+      const vault = getVault();
+      const script = getScriptPath(vault);
+      const r = spawnSync("bash", [script, "--vault", vault, "install", mode, selected.path, scope], { encoding: "utf8" });
       ctx.ui.notify((r.stdout + r.stderr).trim() || "Done!", r.status === 0 ? "success" : "error");
     },
   });

@@ -2,16 +2,39 @@
 # load-skills.sh — Browse and install skills & extensions from pi-skills_vault
 #
 # Usage:
-#   load-skills.sh list
-#   load-skills.sh preview <category/skill-name>
-#   load-skills.sh preview extensions/<name>.ts
-#   load-skills.sh install --link|--copy <category/skill-name>  [--global | <dir>]
-#   load-skills.sh install --link|--copy extensions/<name>.ts   [--global | <dir>]
-#   load-skills.sh browse   (interactive, requires fzf)
+#   load-skills.sh [--vault <path>] list
+#   load-skills.sh [--vault <path>] preview <category/skill-name>
+#   load-skills.sh [--vault <path>] preview extensions/<name>.ts
+#   load-skills.sh [--vault <path>] install --link|--copy <category/skill-name>  [--global | <dir>]
+#   load-skills.sh [--vault <path>] install --link|--copy extensions/<name>.ts   [--global | <dir>]
+#   load-skills.sh [--vault <path>] browse   (interactive, requires fzf)
 
 set -euo pipefail
 
 VAULT="${PI_SKILLS_VAULT:-$HOME/pi-skills_vault}"
+
+# Optional global override: load-skills.sh --vault /path/to/vault <command>
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --vault)
+            [[ -n "${2:-}" ]] || { echo "Error: --vault requires a path"; exit 1; }
+            VAULT="$2"
+            shift 2
+            ;;
+        --vault=*)
+            VAULT="${1#*=}"
+            shift
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
 GLOBAL_SKILLS_DIR="$HOME/.pi/agent/skills"
 GLOBAL_EXT_DIR="$HOME/.pi/agent/extensions"
 PROJECT_SKILLS_DIR="${PWD}/.pi/skills"

@@ -1,21 +1,21 @@
 ---
 name: load-skills
-description: Browse and install skills from ~/pi-skills_vault into the current project or global pi skills directory. Use when the user wants to load, install, add, list, preview, or browse skills from their vault. Supports symlink (--link) and copy (--copy) modes. Invoke via /skill:load-skills.
+description: Browse and install skills from the configured pi-skills vault into the current project or global pi skills directory. Use when the user wants to load, install, add, list, preview, or browse skills from their vault. Supports symlink (--link) and copy (--copy) modes. Invoke via /skill:load-skills.
 ---
 
 # load-skills
 
-Browse and install skills from `~/pi-skills_vault`.
+Browse and install skills from the configured vault.
 
 ## Script Location
 
 The management script is at `scripts/load-skills.sh` relative to this skill directory.
-Full path: `~/pi-skills_vault/shared/load-skills/scripts/load-skills.sh`
+Default script path: `~/pi-skills_vault/shared/load-skills/scripts/load-skills.sh`
 
 ## Commands
 
 ```bash
-SCRIPT=~/pi-skills_vault/shared/load-skills/scripts/load-skills.sh
+SCRIPT="${PI_SKILLS_VAULT:-$HOME/pi-skills_vault}/shared/load-skills/scripts/load-skills.sh"
 
 # List all skills in vault (grouped by category)
 bash $SCRIPT list
@@ -81,6 +81,7 @@ When invoked as `/skill:load-skills <args>`, parse the arguments:
 ## Notes
 
 - Vault location defaults to `~/pi-skills_vault`. Override with `PI_SKILLS_VAULT` env var.
+- You can also override per invocation with `--vault /path/to/pi-skills_vault`.
 - After installing, pi will discover the skill automatically on next session start.
 - To uninstall: `rm ~/.pi/agent/skills/skill-name` (for global) or `rm .pi/skills/skill-name` (for project).
 - If `--copy` was used, edit the copy freely — it won't affect the vault original.
